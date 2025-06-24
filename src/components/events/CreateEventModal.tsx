@@ -30,7 +30,7 @@ const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
     time: "",
     location: "",
     category: "",
-    ticket_type: "free",
+    ticket_type: "free" as "free" | "paid",
     price: "",
     capacity: "",
     image_url: "",
@@ -88,7 +88,7 @@ const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
 
       const { error } = await supabase
         .from("events")
-        .insert([eventData]);
+        .insert(eventData);
 
       if (error) throw error;
 
