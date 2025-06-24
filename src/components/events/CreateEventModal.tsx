@@ -30,7 +30,7 @@ const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
     time: "",
     location: "",
     category: "",
-    ticket_type: "free" as const,
+    ticket_type: "free",
     price: "",
     capacity: "",
     image_url: "",
