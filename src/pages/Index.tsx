@@ -5,62 +5,85 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search, Calendar, MapPin, Users, Ticket, Plus } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import AuthModal from "@/components/auth/AuthModal";
 import CreateEventModal from "@/components/events/CreateEventModal";
 import Header from "@/components/layout/Header";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [createEventModalOpen, setCreateEventModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
-  // Mock events data - will be replaced with real data later
-  const mockEvents = [
-    {
-      id: 1,
-      title: "Festival de Música Eletrônica",
-      description: "Uma noite inesquecível com os melhores DJs do Brasil",
-      date: "2024-07-15",
-      time: "20:00",
-      location: "São Paulo, SP",
-      image: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400",
-      price: "R$ 80,00",
-      category: "Música",
-      attendees: 245
-    },
-    {
-      id: 2,
-      title: "Workshop de Empreendedorismo",
-      description: "Aprenda as melhores estratégias para começar seu negócio",
-      date: "2024-07-20",
-      time: "14:00",
-      location: "Rio de Janeiro, RJ",
-      image: "https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=400",
-      price: "Gratuito",
-      category: "Negócios",
-      attendees: 89
-    },
-    {
-      id: 3,
-      title: "Encontro de Tecnologia",
-      description: "Palestras sobre as últimas tendências em tecnologia",
-      date: "2024-07-25",
-      time: "09:00",
-      location: "Belo Horizonte, MG",
-      image: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=400",
-      price: "R$ 50,00",
-      category: "Tecnologia",
-      attendees: 156
-    }
-  ];
+  const { data: events = [], isLoading } = useQuery({
+    queryKey: ['events'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('events')
+        .select(`
+          *,
+          profiles (
+            name,
+            email
+          )
+        `)
+        .eq('status', 'published')
+        .order('created_at', { ascending: false });
 
-  const filteredEvents = mockEvents.filter(event =>
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const { data: ticketCounts = {} } = useQuery({
+    queryKey: ['ticket-counts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tickets')
+        .select('event_id');
+
+      if (error) throw error;
+
+      const counts: Record<string, number> = {};
+      data?.forEach(ticket => {
+        counts[ticket.event_id] = (counts[ticket.event_id] || 0) + 1;
+      });
+
+      return counts;
+    },
+  });
+
+  const filteredEvents = events.filter(event =>
     event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    event.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (event.category && event.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
     event.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleEventClick = (eventId: string) => {
+    navigate(`/event/${eventId}`);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
+        <Header 
+          onAuthClick={() => setAuthModalOpen(true)}
+          onCreateEventClick={() => setCreateEventModalOpen(true)}
+        />
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Carregando eventos...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
@@ -88,9 +111,13 @@ const Index = () => {
               <Plus className="w-5 h-5 mr-2" />
               Criar Evento
             </Button>
-            <Button size="lg" variant="outline">
+            <Button 
+              size="lg" 
+              variant="outline"
+              onClick={() => navigate('/checkin')}
+            >
               <Ticket className="w-5 h-5 mr-2" />
-              Comprar Ingressos
+              Check-in
             </Button>
           </div>
         </div>
@@ -117,50 +144,73 @@ const Index = () => {
           <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
             Eventos em Destaque
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredEvents.map((event) => (
-              <Card key={event.id} className="overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-0 shadow-lg">
-                <div className="aspect-video overflow-hidden">
-                  <img 
-                    src={event.image} 
-                    alt={event.title}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start mb-2">
-                    <Badge className="bg-gradient-to-r from-purple-500 to-blue-500 text-white">
-                      {event.category}
-                    </Badge>
-                    <span className="font-bold text-lg text-purple-600">{event.price}</span>
+          
+          {filteredEvents.length === 0 ? (
+            <div className="text-center py-12">
+              <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-xl text-gray-600 mb-4">
+                {events.length === 0 ? "Nenhum evento encontrado" : "Nenhum evento corresponde à sua busca"}
+              </p>
+              <Button 
+                onClick={() => setCreateEventModalOpen(true)}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Criar Primeiro Evento
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredEvents.map((event) => (
+                <Card 
+                  key={event.id} 
+                  className="overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-0 shadow-lg cursor-pointer"
+                  onClick={() => handleEventClick(event.id)}
+                >
+                  <div className="aspect-video overflow-hidden">
+                    <img 
+                      src={event.image_url || "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=400"} 
+                      alt={event.title}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                    />
                   </div>
-                  <CardTitle className="text-xl line-clamp-1">{event.title}</CardTitle>
-                  <CardDescription className="line-clamp-2 text-gray-600">
-                    {event.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-sm text-gray-500">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      {new Date(event.date).toLocaleDateString('pt-BR')} às {event.time}
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start mb-2">
+                      <Badge className="bg-gradient-to-r from-purple-500 to-blue-500 text-white">
+                        {event.category || "Evento"}
+                      </Badge>
+                      <span className="font-bold text-lg text-purple-600">
+                        {event.ticket_type === 'free' ? 'Gratuito' : `R$ ${event.price?.toFixed(2)}`}
+                      </span>
                     </div>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <MapPin className="w-4 h-4 mr-2" />
-                      {event.location}
+                    <CardTitle className="text-xl line-clamp-1">{event.title}</CardTitle>
+                    <CardDescription className="line-clamp-2 text-gray-600">
+                      {event.description || "Evento incrível que você não pode perder!"}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center text-sm text-gray-500">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        {new Date(event.date).toLocaleDateString('pt-BR')} às {event.time}
+                      </div>
+                      <div className="flex items-center text-sm text-gray-500">
+                        <MapPin className="w-4 h-4 mr-2" />
+                        {event.location}
+                      </div>
+                      <div className="flex items-center text-sm text-gray-500">
+                        <Users className="w-4 h-4 mr-2" />
+                        {ticketCounts[event.id] || 0} participantes
+                      </div>
                     </div>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <Users className="w-4 h-4 mr-2" />
-                      {event.attendees} participantes
-                    </div>
-                  </div>
-                  <Button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-                    Ver Detalhes
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    <Button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                      Ver Detalhes
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

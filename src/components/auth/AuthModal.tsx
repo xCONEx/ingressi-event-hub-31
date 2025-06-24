@@ -1,12 +1,18 @@
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface AuthModalProps {
   open: boolean;
@@ -14,159 +20,106 @@ interface AuthModalProps {
 }
 
 const AuthModal = ({ open, onOpenChange }: AuthModalProps) => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { login, register } = useAuth();
-  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+  });
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      toast({
-        title: "Erro",
-        description: "Por favor, preencha todos os campos",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await login(email, password);
-      toast({
-        title: "Sucesso!",
-        description: "Login realizado com sucesso",
-      });
-      onOpenChange(false);
-      resetForm();
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Falha no login. Verifique suas credenciais.",
-        variant: "destructive",
-      });
-    }
-    setLoading(false);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
   };
 
-  const handleRegister = async () => {
-    if (!email || !password || !name) {
-      toast({
-        title: "Erro",
-        description: "Por favor, preencha todos os campos",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
 
-    setLoading(true);
     try {
-      await register(email, password, name);
+      const { data, error } = await supabase
+        .from("profiles")
+        .insert([formData])
+        .select()
+        .single();
+
+      if (error) throw error;
+
       toast({
-        title: "Sucesso!",
-        description: "Conta criada com sucesso",
+        title: "Perfil criado com sucesso!",
+        description: "Você pode começar a usar o Ingrezzi agora.",
       });
+
+      localStorage.setItem('ingrezzi_user', JSON.stringify(data));
+      window.location.reload();
       onOpenChange(false);
-      resetForm();
     } catch (error) {
+      console.error('Error creating profile:', error);
       toast({
-        title: "Erro",
-        description: "Falha no cadastro. Tente novamente.",
+        title: "Erro ao criar perfil",
+        description: "Tente novamente em alguns instantes.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
-    setLoading(false);
-  };
-
-  const resetForm = () => {
-    setEmail("");
-    setPassword("");
-    setName("");
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-center text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-            Bem-vindo ao Ingrezzi
-          </DialogTitle>
+          <DialogTitle>Bem-vindo ao Ingrezzi</DialogTitle>
+          <DialogDescription>
+            Crie seu perfil para começar a usar nossa plataforma
+          </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="login" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Entrar</TabsTrigger>
-            <TabsTrigger value="register">Cadastrar</TabsTrigger>
-          </TabsList>
-          <TabsContent value="login" className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            <Button 
-              onClick={handleLogin} 
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-            >
-              {loading ? "Entrando..." : "Entrar"}
-            </Button>
-          </TabsContent>
-          <TabsContent value="register" className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome</Label>
-              <Input
-                id="name"
-                type="text"
-                placeholder="Seu nome completo"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="register-email">E-mail</Label>
-              <Input
-                id="register-email"
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="register-password">Senha</Label>
-              <Input
-                id="register-password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            <Button 
-              onClick={handleRegister} 
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-            >
-              {loading ? "Criando conta..." : "Criar Conta"}
-            </Button>
-          </TabsContent>
-        </Tabs>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Nome completo</Label>
+            <Input
+              id="name"
+              name="name"
+              type="text"
+              placeholder="Seu nome completo"
+              value={formData.name}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="email">E-mail</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="seu@email.com"
+              value={formData.email}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phone">Telefone (opcional)</Label>
+            <Input
+              id="phone"
+              name="phone"
+              type="tel"
+              placeholder="(11) 99999-9999"
+              value={formData.phone}
+              onChange={handleInputChange}
+            />
+          </div>
+
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Criando perfil..." : "Criar perfil"}
+          </Button>
+        </form>
       </DialogContent>
     </Dialog>
   );

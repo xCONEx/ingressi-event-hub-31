@@ -25,13 +25,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Check for stored user session
     const storedUser = localStorage.getItem('ingrezzi_user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+        localStorage.removeItem('ingrezzi_user');
+      }
     }
     setLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Mock login - replace with actual authentication
+    // Mock login - will be replaced with Supabase auth later
     console.log('Login attempt:', { email, password });
     const mockUser = {
       id: '1',
@@ -43,7 +48,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const register = async (email: string, password: string, name?: string) => {
-    // Mock registration - replace with actual authentication
+    // Mock registration - will be replaced with Supabase auth later
     console.log('Register attempt:', { email, password, name });
     const mockUser = {
       id: '1',
