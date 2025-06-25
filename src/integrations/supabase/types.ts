@@ -282,6 +282,7 @@ export type Database = {
           id: string
           is_organizer: boolean | null
           name: string
+          person_type: string | null
           phone: string | null
           plan_expires_at: string | null
           plan_type: Database["public"]["Enums"]["user_plan_type"] | null
@@ -295,6 +296,7 @@ export type Database = {
           id?: string
           is_organizer?: boolean | null
           name: string
+          person_type?: string | null
           phone?: string | null
           plan_expires_at?: string | null
           plan_type?: Database["public"]["Enums"]["user_plan_type"] | null
@@ -308,6 +310,7 @@ export type Database = {
           id?: string
           is_organizer?: boolean | null
           name?: string
+          person_type?: string | null
           phone?: string | null
           plan_expires_at?: string | null
           plan_type?: Database["public"]["Enums"]["user_plan_type"] | null

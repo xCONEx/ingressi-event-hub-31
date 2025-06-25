@@ -74,7 +74,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             phone: profile?.phone,
             cpf: profile?.cpf,
             plan_type: profile?.plan_type,
-            person_type: profile?.person_type,
+            person_type: (profile as any)?.person_type,
             complete_profile: completeProfile
           });
         } else {
@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           phone: profile?.phone,
           cpf: profile?.cpf,
           plan_type: profile?.plan_type,
-          person_type: profile?.person_type,
+          person_type: (profile as any)?.person_type,
           complete_profile: completeProfile
         });
       }
