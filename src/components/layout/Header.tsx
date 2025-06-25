@@ -28,6 +28,19 @@ const Header = ({ onAuthClick, onCreateEventClick }: HeaderProps) => {
     navigate(path);
   };
 
+  const handleHowItWorks = () => {
+    // Scroll to how it works section or navigate to dedicated page
+    const element = document.getElementById('how-it-works');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleSupport = () => {
+    // Open support modal or navigate to support page
+    window.open('https://wa.me/5527997557004', '_blank');
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b border-gray-200">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -48,10 +61,18 @@ const Header = ({ onAuthClick, onCreateEventClick }: HeaderProps) => {
           >
             Eventos
           </Button>
-          <Button variant="ghost" className="text-gray-600 hover:text-purple-600">
+          <Button 
+            variant="ghost" 
+            className="text-gray-600 hover:text-purple-600"
+            onClick={handleHowItWorks}
+          >
             Como Funciona
           </Button>
-          <Button variant="ghost" className="text-gray-600 hover:text-purple-600">
+          <Button 
+            variant="ghost" 
+            className="text-gray-600 hover:text-purple-600"
+            onClick={handleSupport}
+          >
             Suporte
           </Button>
         </nav>
@@ -73,9 +94,9 @@ const Header = ({ onAuthClick, onCreateEventClick }: HeaderProps) => {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src="" alt={user.email} />
+                        <AvatarImage src={user.avatar_url || ""} alt={user.name || user.email} />
                         <AvatarFallback className="bg-gradient-to-r from-purple-500 to-blue-500 text-white">
-                          {user.email?.charAt(0).toUpperCase()}
+                          {(user.name || user.email)?.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                     </Button>
@@ -83,7 +104,8 @@ const Header = ({ onAuthClick, onCreateEventClick }: HeaderProps) => {
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <div className="flex items-center justify-start gap-2 p-2">
                       <div className="flex flex-col space-y-1 leading-none">
-                        <p className="font-medium">{user.email}</p>
+                        <p className="font-medium">{user.name || user.email}</p>
+                        <p className="text-xs text-muted-foreground">{user.email}</p>
                       </div>
                     </div>
                     <DropdownMenuSeparator />

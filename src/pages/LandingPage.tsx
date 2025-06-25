@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +15,7 @@ import {
   BarChart3
 } from "lucide-react";
 import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
 import EventCategories from "@/components/categories/EventCategories";
 import StateFilter from "@/components/filters/StateFilter";
 import AuthModal from "@/components/auth/AuthModal";
@@ -174,7 +174,7 @@ const LandingPage = () => {
       />
 
       {/* Features Section */}
-      <section className="py-20 px-4 bg-gray-50">
+      <section id="how-it-works" className="py-20 px-4 bg-gray-50">
         <div className="container mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-800 mb-4">
@@ -282,6 +282,8 @@ const LandingPage = () => {
           </Button>
         </div>
       </section>
+
+      <Footer />
 
       <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />
     </div>

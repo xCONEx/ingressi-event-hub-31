@@ -96,7 +96,7 @@ const EventCategories = () => {
       <div className="container mx-auto">
         <div className="flex items-center mb-8">
           <div className="text-2xl mr-3">⚡</div>
-          <h2 className="text-3xl font-bold text-gray-800">Diversão por categoria</h2>
+          <h2 className="text-3xl font-bold text-gray-800">Eventos por categoria</h2>
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">

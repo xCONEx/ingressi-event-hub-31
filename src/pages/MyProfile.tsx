@@ -8,21 +8,50 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/layout/Header";
-import { Camera, Save, User, Mail, Phone, Calendar } from "lucide-react";
+import { Camera, Save, User, Mail, Phone, Calendar, Upload } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 const MyProfile = () => {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || "",
     email: user?.email || "",
-    phone: "",
-    avatar: ""
+    phone: user?.phone || "",
+    avatar_url: user?.avatar_url || ""
   });
 
-  const handleSave = () => {
-    // Aqui implementaremos a lógica de salvar
-    setIsEditing(false);
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateProfile(formData);
+      toast({
+        title: "Perfil atualizado!",
+        description: "Suas informações foram salvas com sucesso.",
+      });
+      setIsEditing(false);
+    } catch (error) {
+      toast({
+        title: "Erro ao atualizar perfil",
+        description: "Tente novamente em alguns instantes.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Here you would implement file upload to Supabase Storage
+    // For now, we'll just show a placeholder
+    toast({
+      title: "Upload de foto",
+      description: "Funcionalidade de upload será implementada em breve.",
+    });
   };
 
   return (
@@ -42,22 +71,32 @@ const MyProfile = () => {
               <CardHeader className="text-center">
                 <div className="relative mx-auto w-24 h-24 mb-4">
                   <Avatar className="w-24 h-24">
-                    <AvatarImage src={formData.avatar} />
+                    <AvatarImage src={formData.avatar_url} />
                     <AvatarFallback className="bg-gradient-to-r from-purple-500 to-blue-500 text-white text-2xl">
-                      {user?.email?.charAt(0).toUpperCase()}
+                      {(user?.name || user?.email)?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <Button
                     size="icon"
                     variant="outline"
                     className="absolute bottom-0 right-0 rounded-full w-8 h-8"
+                    onClick={() => document.getElementById('avatar-upload')?.click()}
                   >
                     <Camera className="w-4 h-4" />
                   </Button>
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                  />
                 </div>
                 <CardTitle>{user?.name || user?.email?.split('@')[0]}</CardTitle>
                 <CardDescription>{user?.email}</CardDescription>
-                <Badge className="mt-2 bg-green-100 text-green-800">Plano Gratuito</Badge>
+                <Badge className="mt-2 bg-green-100 text-green-800">
+                  Plano {user?.plan_type === 'free' ? 'Gratuito' : user?.plan_type === 'basic' ? 'Básico' : 'Premium'}
+                </Badge>
               </CardHeader>
             </Card>
             
@@ -72,6 +111,7 @@ const MyProfile = () => {
                   <Button 
                     variant={isEditing ? "default" : "outline"}
                     onClick={() => setIsEditing(!isEditing)}
+                    disabled={isSaving}
                   >
                     {isEditing ? "Cancelar" : "Editar"}
                   </Button>
@@ -101,8 +141,7 @@ const MyProfile = () => {
                       id="email"
                       type="email"
                       value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      disabled={!isEditing}
+                      disabled={true}
                     />
                   </div>
                   
@@ -130,9 +169,13 @@ const MyProfile = () => {
                 </div>
                 
                 {isEditing && (
-                  <Button onClick={handleSave} className="w-full md:w-auto">
+                  <Button 
+                    onClick={handleSave} 
+                    className="w-full md:w-auto"
+                    disabled={isSaving}
+                  >
                     <Save className="w-4 h-4 mr-2" />
-                    Salvar Alterações
+                    {isSaving ? "Salvando..." : "Salvar Alterações"}
                   </Button>
                 )}
               </CardContent>
@@ -149,8 +192,12 @@ const MyProfile = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="p-4 border rounded-lg">
                   <h3 className="font-semibold text-green-600 mb-2">Plano Atual</h3>
-                  <p className="text-2xl font-bold">Gratuito</p>
-                  <p className="text-sm text-gray-600">Eventos gratuitos apenas</p>
+                  <p className="text-2xl font-bold capitalize">
+                    {user?.plan_type === 'free' ? 'Gratuito' : user?.plan_type === 'basic' ? 'Básico' : 'Premium'}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {user?.plan_type === 'free' ? 'Eventos gratuitos apenas' : 'Eventos pagos liberados'}
+                  </p>
                 </div>
                 
                 <div className="p-4 border rounded-lg">
@@ -166,9 +213,11 @@ const MyProfile = () => {
                 </div>
               </div>
               
-              <Button className="mt-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-                Fazer Upgrade do Plano
-              </Button>
+              {user?.plan_type === 'free' && (
+                <Button className="mt-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                  Fazer Upgrade do Plano
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>

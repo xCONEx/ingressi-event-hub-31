@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,21 +10,26 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CalendarIcon, Crown } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 
 interface CreateEventModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEventCreated?: () => void;
 }
 
-const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
+const CreateEventModal = ({ open, onOpenChange, onEventCreated }: CreateEventModalProps) => {
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [userPlan, setUserPlan] = useState<'free' | 'basic' | 'premium'>('free');
-  const [canCreatePaid, setCanCreatePaid] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -32,39 +37,10 @@ const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
     time: "",
     location: "",
     category: "",
-    ticket_type: "free" as "free" | "paid",
+    ticket_type: "free",
     price: "",
     capacity: "",
-    image_url: "",
   });
-
-  useEffect(() => {
-    if (open) {
-      checkUserPlan();
-    }
-  }, [open]);
-
-  const checkUserPlan = async () => {
-    try {
-      const storedUser = localStorage.getItem('ingrezzi_user');
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('plan_type, plan_expires_at')
-          .eq('id', user.id)
-          .single();
-
-        if (profile) {
-          setUserPlan(profile.plan_type || 'free');
-          const planValid = !profile.plan_expires_at || new Date(profile.plan_expires_at) > new Date();
-          setCanCreatePaid(profile.plan_type !== 'free' && planValid);
-        }
-      }
-    } catch (error) {
-      console.error('Error checking user plan:', error);
-    }
-  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -85,62 +61,32 @@ const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
     setIsLoading(true);
 
     try {
-      // Verificar se usuário pode criar evento pago
-      if (formData.ticket_type === 'paid' && !canCreatePaid) {
-        toast({
-          title: "Upgrade necessário",
-          description: "Usuários com plano gratuito só podem criar eventos gratuitos. Faça upgrade do seu plano.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Get or create user profile
-      let organizerId = null;
-      const storedUser = localStorage.getItem('ingrezzi_user');
-      
-      if (storedUser) {
-        organizerId = JSON.parse(storedUser).id;
-      } else {
-        // Create temporary organizer profile
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .insert([{
-            name: "Organizador Temporário",
-            email: "temp@organizador.com",
-            is_organizer: true
-          }])
-          .select()
-          .single();
-
-        if (profileError) throw profileError;
-        organizerId = profile.id;
-        localStorage.setItem('ingrezzi_user', JSON.stringify(profile));
-      }
-
-      const eventData = {
-        ...formData,
-        organizer_id: organizerId,
-        price: formData.ticket_type === 'paid' ? parseFloat(formData.price) || 0 : 0,
-        capacity: formData.capacity ? parseInt(formData.capacity) : null,
-        status: 'published' as const,
-      };
-
-      const { error } = await supabase
+      const { data: event, error } = await supabase
         .from("events")
-        .insert(eventData);
+        .insert({
+          title: formData.title,
+          description: formData.description,
+          date: formData.date,
+          time: formData.time,
+          location: formData.location,
+          category: formData.category,
+          ticket_type: formData.ticket_type,
+          price: formData.ticket_type === 'paid' ? Number(formData.price) : 0,
+          capacity: Number(formData.capacity),
+          organizer_id: user?.id,
+          status: 'draft'
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
       toast({
         title: "Evento criado com sucesso!",
-        description: formData.ticket_type === 'paid' 
-          ? `Seu evento foi publicado. Taxa do sistema: ${userPlan === 'basic' ? '5%' : '3%'}`
-          : "Seu evento gratuito foi publicado e já está disponível.",
+        description: `O evento "${formData.title}" foi salvo como rascunho.`,
       });
 
-      onOpenChange(false);
+      // Reset form
       setFormData({
         title: "",
         description: "",
@@ -148,12 +94,14 @@ const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
         time: "",
         location: "",
         category: "",
-        ticket_type: "free" as "free" | "paid",
+        ticket_type: "free",
         price: "",
         capacity: "",
-        image_url: "",
       });
-      window.location.reload();
+
+      onOpenChange(false);
+      onEventCreated?.();
+
     } catch (error) {
       console.error('Error creating event:', error);
       toast({
@@ -168,37 +116,22 @@ const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            Criar Novo Evento
-            <Crown className={`w-4 h-4 ${userPlan === 'free' ? 'text-gray-400' : userPlan === 'basic' ? 'text-blue-500' : 'text-purple-500'}`} />
-            <span className="text-sm font-normal text-gray-500">
-              Plano {userPlan === 'free' ? 'Gratuito' : userPlan === 'basic' ? 'Básico' : 'Premium'}
-            </span>
-          </DialogTitle>
+          <DialogTitle>Criar Novo Evento</DialogTitle>
           <DialogDescription>
-            Preencha as informações do seu evento
+            Preencha os detalhes do seu evento abaixo.
           </DialogDescription>
         </DialogHeader>
 
-        {userPlan === 'free' && (
-          <Alert>
-            <Crown className="h-4 w-4" />
-            <AlertDescription>
-              Com o plano gratuito, você pode criar apenas eventos gratuitos. 
-              Faça upgrade para criar eventos pagos e ter acesso a mais recursos.
-            </AlertDescription>
-          </Alert>
-        )}
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Título do evento *</Label>
+            <Label htmlFor="title">Título do Evento *</Label>
             <Input
               id="title"
               name="title"
-              placeholder="Nome do seu evento"
+              type="text"
+              placeholder="Nome do evento"
               value={formData.title}
               onChange={handleInputChange}
               required
@@ -210,14 +143,13 @@ const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
             <Textarea
               id="description"
               name="description"
-              placeholder="Descreva seu evento..."
+              placeholder="Detalhes sobre o evento"
               value={formData.description}
               onChange={handleInputChange}
-              rows={3}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="date">Data *</Label>
               <Input
@@ -229,8 +161,9 @@ const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
                 required
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="time">Horário *</Label>
+              <Label htmlFor="time">Hora *</Label>
               <Input
                 id="time"
                 name="time"
@@ -247,86 +180,64 @@ const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
             <Input
               id="location"
               name="location"
-              placeholder="Endereço ou local do evento"
+              type="text"
+              placeholder="Endereço do evento"
               value={formData.location}
               onChange={handleInputChange}
               required
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="category">Categoria</Label>
-              <Select onValueChange={(value) => handleSelectChange("category", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Música">Música</SelectItem>
-                  <SelectItem value="Tecnologia">Tecnologia</SelectItem>
-                  <SelectItem value="Negócios">Negócios</SelectItem>
-                  <SelectItem value="Esportes">Esportes</SelectItem>
-                  <SelectItem value="Arte">Arte</SelectItem>
-                  <SelectItem value="Educação">Educação</SelectItem>
-                  <SelectItem value="Outros">Outros</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="capacity">Capacidade</Label>
-              <Input
-                id="capacity"
-                name="capacity"
-                type="number"
-                placeholder="Número de participantes"
-                value={formData.capacity}
-                onChange={handleInputChange}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="category">Categoria</Label>
+            <Input
+              id="category"
+              name="category"
+              type="text"
+              placeholder="Categoria do evento"
+              value={formData.category}
+              onChange={handleInputChange}
+            />
           </div>
 
           <div className="space-y-2">
-            <Label>Tipo de ingresso *</Label>
-            <Select onValueChange={(value) => handleSelectChange("ticket_type", value)} defaultValue="free">
-              <SelectTrigger>
-                <SelectValue />
+            <Label htmlFor="ticket_type">Tipo de Ingresso *</Label>
+            <Select onValueChange={(value) => handleSelectChange("ticket_type", value)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecione o tipo de ingresso" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="free">Gratuito</SelectItem>
-                <SelectItem value="paid" disabled={!canCreatePaid}>
-                  Pago {!canCreatePaid && "(Upgrade necessário)"}
-                </SelectItem>
+                <SelectItem value="paid">Pago</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {formData.ticket_type === "paid" && canCreatePaid && (
+          {formData.ticket_type === "paid" && (
             <div className="space-y-2">
-              <Label htmlFor="price">Preço (R$)</Label>
+              <Label htmlFor="price">Preço *</Label>
               <Input
                 id="price"
                 name="price"
                 type="number"
-                step="0.01"
-                placeholder="0.00"
+                placeholder="Valor do ingresso"
                 value={formData.price}
                 onChange={handleInputChange}
+                required
               />
-              <p className="text-sm text-gray-500">
-                Taxa do sistema: {userPlan === 'basic' ? '5%' : '3%'} sobre cada venda
-              </p>
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="image_url">URL da Imagem</Label>
+            <Label htmlFor="capacity">Capacidade *</Label>
             <Input
-              id="image_url"
-              name="image_url"
-              type="url"
-              placeholder="https://exemplo.com/imagem.jpg"
-              value={formData.image_url}
+              id="capacity"
+              name="capacity"
+              type="number"
+              placeholder="Número máximo de participantes"
+              value={formData.capacity}
               onChange={handleInputChange}
+              required
             />
           </div>
 
