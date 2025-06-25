@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +38,7 @@ const CreateEventModal = ({ open, onOpenChange, onEventCreated }: CreateEventMod
     time: "",
     location: "",
     category: "",
-    ticket_type: "free",
+    ticket_type: "free" as "free" | "paid",
     price: "",
     capacity: "",
   });
@@ -74,7 +75,7 @@ const CreateEventModal = ({ open, onOpenChange, onEventCreated }: CreateEventMod
           price: formData.ticket_type === 'paid' ? Number(formData.price) : 0,
           capacity: Number(formData.capacity),
           organizer_id: user?.id,
-          status: 'draft'
+          status: 'draft' as const
         })
         .select()
         .single();
@@ -202,7 +203,7 @@ const CreateEventModal = ({ open, onOpenChange, onEventCreated }: CreateEventMod
 
           <div className="space-y-2">
             <Label htmlFor="ticket_type">Tipo de Ingresso *</Label>
-            <Select onValueChange={(value) => handleSelectChange("ticket_type", value)}>
+            <Select onValueChange={(value) => handleSelectChange("ticket_type", value)} value={formData.ticket_type}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Selecione o tipo de ingresso" />
               </SelectTrigger>
