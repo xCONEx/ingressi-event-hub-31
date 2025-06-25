@@ -1,10 +1,10 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Camera, CheckCircle, XCircle, ArrowLeft, Search } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Camera, CheckCircle, XCircle, ArrowLeft, Search, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -19,10 +19,15 @@ const CheckIn = () => {
   const [manualCode, setManualCode] = useState("");
   const [lastScannedTicket, setLastScannedTicket] = useState<any>(null);
   const [hasCamera, setHasCamera] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
     // Check if camera is available
     QrScanner.hasCamera().then(setHasCamera);
+    
+    // Check user authorization
+    checkUserAuthorization();
 
     return () => {
       if (qrScannerRef.current) {
@@ -31,7 +36,70 @@ const CheckIn = () => {
     };
   }, []);
 
+  const checkUserAuthorization = async () => {
+    try {
+      const storedUser = localStorage.getItem('ingrezzi_user');
+      if (!storedUser) {
+        toast({
+          title: "Acesso negado",
+          description: "Você precisa estar logado para fazer check-in.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const user = JSON.parse(storedUser);
+      setUserProfile(user);
+
+      // Verificar se é organizador ou tem autorização para algum evento
+      const { data: authorizations, error } = await supabase
+        .from('event_authorizations')
+        .select(`
+          *,
+          events (
+            id,
+            title,
+            organizer_id
+          )
+        `)
+        .eq('authorized_user_id', user.id)
+        .eq('status', 'approved');
+
+      if (error) throw error;
+
+      // Também verificar se é organizador de algum evento
+      const { data: ownedEvents, error: eventsError } = await supabase
+        .from('events')
+        .select('id, title')
+        .eq('organizer_id', user.id);
+
+      if (eventsError) throw eventsError;
+
+      const hasAuthorization = (authorizations && authorizations.length > 0) || (ownedEvents && ownedEvents.length > 0);
+      setIsAuthorized(hasAuthorization);
+
+      if (!hasAuthorization) {
+        toast({
+          title: "Acesso restrito",
+          description: "Você não possui autorização para fazer check-in em eventos.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error checking authorization:', error);
+    }
+  };
+
   const handleTicketValidation = async (qrCode: string) => {
+    if (!isAuthorized) {
+      toast({
+        title: "Acesso negado",
+        description: "Você não possui autorização para fazer check-in.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       // First, get the ticket
       const { data: ticket, error: ticketError } = await supabase
@@ -43,7 +111,8 @@ const CheckIn = () => {
             title,
             date,
             time,
-            location
+            location,
+            organizer_id
           )
         `)
         .eq('qr_code', qrCode.trim())
@@ -53,6 +122,18 @@ const CheckIn = () => {
         toast({
           title: "Ingresso não encontrado",
           description: "Código QR inválido ou ingresso não existe.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Verificar se usuário tem autorização para este evento específico
+      const canCheckIn = await verifyEventAuthorization(ticket.events.id, ticket.events.organizer_id);
+      
+      if (!canCheckIn) {
+        toast({
+          title: "Acesso negado",
+          description: "Você não possui autorização para fazer check-in neste evento.",
           variant: "destructive",
         });
         return;
@@ -92,6 +173,7 @@ const CheckIn = () => {
         .insert([{
           ticket_id: ticket.id,
           event_id: ticket.event_id,
+          checked_in_by: userProfile?.id,
         }]);
 
       toast({
@@ -109,6 +191,26 @@ const CheckIn = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const verifyEventAuthorization = async (eventId: string, organizerId: string) => {
+    if (!userProfile) return false;
+
+    // Se é o organizador do evento
+    if (userProfile.id === organizerId) {
+      return true;
+    }
+
+    // Verificar se tem autorização específica para este evento
+    const { data: authorization } = await supabase
+      .from('event_authorizations')
+      .select('id')
+      .eq('event_id', eventId)
+      .eq('authorized_user_id', userProfile.id)
+      .eq('status', 'approved')
+      .single();
+
+    return !!authorization;
   };
 
   const startScanning = async () => {
@@ -178,11 +280,30 @@ const CheckIn = () => {
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Check-in de Ingressos</h1>
             <p className="text-gray-600">Escaneie o QR Code ou digite o código manualmente</p>
+            
+            {userProfile && (
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <Shield className={`w-5 h-5 ${isAuthorized ? 'text-green-600' : 'text-red-600'}`} />
+                <span className={`text-sm ${isAuthorized ? 'text-green-600' : 'text-red-600'}`}>
+                  {isAuthorized ? `Autorizado: ${userProfile.name}` : 'Sem autorização'}
+                </span>
+              </div>
+            )}
           </div>
+
+          {!isAuthorized && (
+            <Alert className="mb-6">
+              <Shield className="h-4 w-4" />
+              <AlertDescription>
+                Você não possui autorização para fazer check-in em eventos. 
+                Entre em contato com o organizador do evento para solicitar acesso.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div className="space-y-6">
             {/* Camera Scanner */}
-            {hasCamera && (
+            {hasCamera && isAuthorized && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -222,30 +343,32 @@ const CheckIn = () => {
             )}
 
             {/* Manual Input */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Search className="w-5 h-5 mr-2" />
-                  Código Manual
-                </CardTitle>
-                <CardDescription>
-                  Digite o código do ingresso manualmente
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleManualSubmit} className="space-y-4">
-                  <Input
-                    placeholder="Ex: ING-ABC12345"
-                    value={manualCode}
-                    onChange={(e) => setManualCode(e.target.value)}
-                    className="text-center font-mono"
-                  />
-                  <Button type="submit" className="w-full">
-                    Validar Ingresso
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+            {isAuthorized && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Search className="w-5 h-5 mr-2" />
+                    Código Manual
+                  </CardTitle>
+                  <CardDescription>
+                    Digite o código do ingresso manualmente
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleManualSubmit} className="space-y-4">
+                    <Input
+                      placeholder="Ex: ING-ABC12345"
+                      value={manualCode}
+                      onChange={(e) => setManualCode(e.target.value)}
+                      className="text-center font-mono"
+                    />
+                    <Button type="submit" className="w-full">
+                      Validar Ingresso
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Last Scanned Ticket */}
             {lastScannedTicket && (

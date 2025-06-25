@@ -55,6 +55,58 @@ export type Database = {
           },
         ]
       }
+      event_authorizations: {
+        Row: {
+          authorized_by: string | null
+          authorized_user_id: string | null
+          created_at: string | null
+          event_id: string | null
+          id: string
+          status: Database["public"]["Enums"]["authorization_status"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          authorized_by?: string | null
+          authorized_user_id?: string | null
+          created_at?: string | null
+          event_id?: string | null
+          id?: string
+          status?: Database["public"]["Enums"]["authorization_status"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          authorized_by?: string | null
+          authorized_user_id?: string | null
+          created_at?: string | null
+          event_id?: string | null
+          id?: string
+          status?: Database["public"]["Enums"]["authorization_status"] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_authorizations_authorized_by_fkey"
+            columns: ["authorized_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_authorizations_authorized_user_id_fkey"
+            columns: ["authorized_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_authorizations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           capacity: number | null
@@ -68,6 +120,7 @@ export type Database = {
           organizer_id: string | null
           price: number | null
           status: Database["public"]["Enums"]["event_status"] | null
+          system_fee_percentage: number | null
           ticket_type: Database["public"]["Enums"]["ticket_type"]
           time: string
           title: string
@@ -85,6 +138,7 @@ export type Database = {
           organizer_id?: string | null
           price?: number | null
           status?: Database["public"]["Enums"]["event_status"] | null
+          system_fee_percentage?: number | null
           ticket_type?: Database["public"]["Enums"]["ticket_type"]
           time: string
           title: string
@@ -102,6 +156,7 @@ export type Database = {
           organizer_id?: string | null
           price?: number | null
           status?: Database["public"]["Enums"]["event_status"] | null
+          system_fee_percentage?: number | null
           ticket_type?: Database["public"]["Enums"]["ticket_type"]
           time?: string
           title?: string
@@ -126,6 +181,8 @@ export type Database = {
           is_organizer: boolean | null
           name: string
           phone: string | null
+          plan_expires_at: string | null
+          plan_type: Database["public"]["Enums"]["user_plan_type"] | null
           updated_at: string | null
         }
         Insert: {
@@ -136,6 +193,8 @@ export type Database = {
           is_organizer?: boolean | null
           name: string
           phone?: string | null
+          plan_expires_at?: string | null
+          plan_type?: Database["public"]["Enums"]["user_plan_type"] | null
           updated_at?: string | null
         }
         Update: {
@@ -146,7 +205,30 @@ export type Database = {
           is_organizer?: boolean | null
           name?: string
           phone?: string | null
+          plan_expires_at?: string | null
+          plan_type?: Database["public"]["Enums"]["user_plan_type"] | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      system_fees: {
+        Row: {
+          created_at: string | null
+          fee_percentage: number
+          id: string
+          plan_type: Database["public"]["Enums"]["user_plan_type"]
+        }
+        Insert: {
+          created_at?: string | null
+          fee_percentage?: number
+          id?: string
+          plan_type: Database["public"]["Enums"]["user_plan_type"]
+        }
+        Update: {
+          created_at?: string | null
+          fee_percentage?: number
+          id?: string
+          plan_type?: Database["public"]["Enums"]["user_plan_type"]
         }
         Relationships: []
       }
@@ -208,15 +290,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_create_paid_events: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
       generate_qr_code: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
     }
     Enums: {
+      authorization_status: "pending" | "approved" | "denied"
       event_status: "draft" | "published" | "cancelled" | "completed"
       payment_status: "pending" | "completed" | "failed" | "refunded"
       ticket_type: "free" | "paid"
+      user_plan_type: "free" | "basic" | "premium"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -332,9 +420,11 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      authorization_status: ["pending", "approved", "denied"],
       event_status: ["draft", "published", "cancelled", "completed"],
       payment_status: ["pending", "completed", "failed", "refunded"],
       ticket_type: ["free", "paid"],
+      user_plan_type: ["free", "basic", "premium"],
     },
   },
 } as const

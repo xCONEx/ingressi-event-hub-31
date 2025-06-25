@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CalendarIcon, Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -23,6 +23,8 @@ interface CreateEventModalProps {
 
 const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [userPlan, setUserPlan] = useState<'free' | 'basic' | 'premium'>('free');
+  const [canCreatePaid, setCanCreatePaid] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -35,6 +37,34 @@ const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
     capacity: "",
     image_url: "",
   });
+
+  useEffect(() => {
+    if (open) {
+      checkUserPlan();
+    }
+  }, [open]);
+
+  const checkUserPlan = async () => {
+    try {
+      const storedUser = localStorage.getItem('ingrezzi_user');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('plan_type, plan_expires_at')
+          .eq('id', user.id)
+          .single();
+
+        if (profile) {
+          setUserPlan(profile.plan_type || 'free');
+          const planValid = !profile.plan_expires_at || new Date(profile.plan_expires_at) > new Date();
+          setCanCreatePaid(profile.plan_type !== 'free' && planValid);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking user plan:', error);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -55,6 +85,17 @@ const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
     setIsLoading(true);
 
     try {
+      // Verificar se usuário pode criar evento pago
+      if (formData.ticket_type === 'paid' && !canCreatePaid) {
+        toast({
+          title: "Upgrade necessário",
+          description: "Usuários com plano gratuito só podem criar eventos gratuitos. Faça upgrade do seu plano.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
       // Get or create user profile
       let organizerId = null;
       const storedUser = localStorage.getItem('ingrezzi_user');
@@ -94,16 +135,30 @@ const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
 
       toast({
         title: "Evento criado com sucesso!",
-        description: "Seu evento foi publicado e já está disponível.",
+        description: formData.ticket_type === 'paid' 
+          ? `Seu evento foi publicado. Taxa do sistema: ${userPlan === 'basic' ? '5%' : '3%'}`
+          : "Seu evento gratuito foi publicado e já está disponível.",
       });
 
       onOpenChange(false);
+      setFormData({
+        title: "",
+        description: "",
+        date: "",
+        time: "",
+        location: "",
+        category: "",
+        ticket_type: "free" as "free" | "paid",
+        price: "",
+        capacity: "",
+        image_url: "",
+      });
       window.location.reload();
     } catch (error) {
       console.error('Error creating event:', error);
       toast({
         title: "Erro ao criar evento",
-        description: "Tente novamente em alguns instantes.",
+        description: error instanceof Error ? error.message : "Tente novamente em alguns instantes.",
         variant: "destructive",
       });
     } finally {
@@ -115,11 +170,27 @@ const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Criar Novo Evento</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            Criar Novo Evento
+            <Crown className={`w-4 h-4 ${userPlan === 'free' ? 'text-gray-400' : userPlan === 'basic' ? 'text-blue-500' : 'text-purple-500'}`} />
+            <span className="text-sm font-normal text-gray-500">
+              Plano {userPlan === 'free' ? 'Gratuito' : userPlan === 'basic' ? 'Básico' : 'Premium'}
+            </span>
+          </DialogTitle>
           <DialogDescription>
             Preencha as informações do seu evento
           </DialogDescription>
         </DialogHeader>
+
+        {userPlan === 'free' && (
+          <Alert>
+            <Crown className="h-4 w-4" />
+            <AlertDescription>
+              Com o plano gratuito, você pode criar apenas eventos gratuitos. 
+              Faça upgrade para criar eventos pagos e ter acesso a mais recursos.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -222,12 +293,14 @@ const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="free">Gratuito</SelectItem>
-                <SelectItem value="paid">Pago</SelectItem>
+                <SelectItem value="paid" disabled={!canCreatePaid}>
+                  Pago {!canCreatePaid && "(Upgrade necessário)"}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {formData.ticket_type === "paid" && (
+          {formData.ticket_type === "paid" && canCreatePaid && (
             <div className="space-y-2">
               <Label htmlFor="price">Preço (R$)</Label>
               <Input
@@ -239,6 +312,9 @@ const CreateEventModal = ({ open, onOpenChange }: CreateEventModalProps) => {
                 value={formData.price}
                 onChange={handleInputChange}
               />
+              <p className="text-sm text-gray-500">
+                Taxa do sistema: {userPlan === 'basic' ? '5%' : '3%'} sobre cada venda
+              </p>
             </div>
           )}
 
