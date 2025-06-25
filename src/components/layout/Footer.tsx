@@ -1,10 +1,15 @@
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Linkedin, Instagram, Facebook, Youtube, Mail, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import TermsModal from "@/components/modals/TermsModal";
+import PrivacyModal from "@/components/modals/PrivacyModal";
 
 const Footer = () => {
   const navigate = useNavigate();
+  const [termsModalOpen, setTermsModalOpen] = useState(false);
+  const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
 
   const handleNavigation = (path: string) => {
     navigate(path);
@@ -29,8 +34,8 @@ const Footer = () => {
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           {/* Logo */}
-          <div className="col-span-1">
-            <div className="flex items-center space-x-2 mb-4">
+          <div className="col-span-1 text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start space-x-2 mb-4">
               <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
                 <span className="text-purple-600 font-bold text-sm">I</span>
               </div>
@@ -39,7 +44,7 @@ const Footer = () => {
           </div>
 
           {/* Institucional */}
-          <div className="col-span-1">
+          <div className="col-span-1 text-center md:text-left">
             <h3 className="font-bold text-lg mb-4">Institucional</h3>
             <ul className="space-y-2">
               <li>
@@ -53,7 +58,7 @@ const Footer = () => {
               <li>
                 <button 
                   className="text-purple-100 hover:text-white transition-colors"
-                  onClick={() => handleNavigation('/content/termos-de-uso')}
+                  onClick={() => setTermsModalOpen(true)}
                 >
                   Termos de Uso
                 </button>
@@ -61,7 +66,7 @@ const Footer = () => {
               <li>
                 <button 
                   className="text-purple-100 hover:text-white transition-colors"
-                  onClick={() => handleNavigation('/content/politica-privacidade')}
+                  onClick={() => setPrivacyModalOpen(true)}
                 >
                   Política de Privacidade
                 </button>
@@ -70,13 +75,13 @@ const Footer = () => {
           </div>
 
           {/* Categorias */}
-          <div className="col-span-1">
+          <div className="col-span-1 text-center md:text-left">
             <h3 className="font-bold text-lg mb-4">Categorias</h3>
             <ul className="space-y-2">
               <li>
                 <button 
                   className="text-purple-100 hover:text-white transition-colors"
-                  onClick={() => handleNavigation('/events?categoria=conferencias-seminarios')}
+                  onClick={() => handleNavigation('/events?categoria=Conferências e Seminários')}
                 >
                   Conferências e Seminários
                 </button>
@@ -84,7 +89,7 @@ const Footer = () => {
               <li>
                 <button 
                   className="text-purple-100 hover:text-white transition-colors"
-                  onClick={() => handleNavigation('/events?categoria=congressos-palestras')}
+                  onClick={() => handleNavigation('/events?categoria=Congressos e Palestras')}
                 >
                   Congressos e Palestras
                 </button>
@@ -92,7 +97,7 @@ const Footer = () => {
               <li>
                 <button 
                   className="text-purple-100 hover:text-white transition-colors"
-                  onClick={() => handleNavigation('/events?categoria=retiros-espirituais')}
+                  onClick={() => handleNavigation('/events?categoria=Retiros Espirituais')}
                 >
                   Retiros Espirituais
                 </button>
@@ -100,7 +105,7 @@ const Footer = () => {
               <li>
                 <button 
                   className="text-purple-100 hover:text-white transition-colors"
-                  onClick={() => handleNavigation('/events?categoria=cursos-workshops')}
+                  onClick={() => handleNavigation('/events?categoria=Cursos e Workshops')}
                 >
                   Cursos e Workshops
                 </button>
@@ -108,14 +113,14 @@ const Footer = () => {
               <li>
                 <button 
                   className="text-purple-100 hover:text-white transition-colors"
-                  onClick={() => handleNavigation('/events?categoria=reunioes-encontros')}
+                  onClick={() => handleNavigation('/events?categoria=Reuniões e Encontros')}
                 >
                   Reuniões e Encontros
                 </button>
               </li>
               <li>
                 <button 
-                  className="text-purple-100 hover:text-white transition-colors flex items-center"
+                  className="text-purple-100 hover:text-white transition-colors flex items-center justify-center md:justify-start"
                   onClick={() => handleNavigation('/events')}
                 >
                   Ver todas →
@@ -125,9 +130,9 @@ const Footer = () => {
           </div>
 
           {/* Redes Sociais */}
-          <div className="col-span-1">
+          <div className="col-span-1 text-center md:text-left">
             <h3 className="font-bold text-lg mb-4">Redes Sociais</h3>
-            <div className="flex space-x-4 mb-4">
+            <div className="flex space-x-4 mb-4 justify-center md:justify-start">
               <Button
                 variant="ghost"
                 size="icon"
@@ -159,7 +164,7 @@ const Footer = () => {
             </div>
             
             <div className="space-y-3">
-              <div className="flex items-center">
+              <div className="flex items-center justify-center md:justify-start">
                 <Mail className="w-4 h-4 mr-2" />
                 <div>
                   <p className="text-sm font-semibold">Email</p>
@@ -167,7 +172,7 @@ const Footer = () => {
                 </div>
               </div>
               
-              <div className="flex items-center">
+              <div className="flex items-center justify-center md:justify-start">
                 <MessageCircle className="w-4 h-4 mr-2" />
                 <div>
                   <p className="text-sm font-semibold">Whatsapp</p>
@@ -186,6 +191,9 @@ const Footer = () => {
           </div>
         </div>
       </div>
+
+      <TermsModal open={termsModalOpen} onOpenChange={setTermsModalOpen} />
+      <PrivacyModal open={privacyModalOpen} onOpenChange={setPrivacyModalOpen} />
     </footer>
   );
 };

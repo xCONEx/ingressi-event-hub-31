@@ -4,21 +4,32 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Search, Calendar, MapPin, Users, Ticket, Plus } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Calendar, MapPin, Users, Ticket, Plus, Filter } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import AuthModal from "@/components/auth/AuthModal";
 import CreateEventModal from "@/components/events/CreateEventModal";
 import Header from "@/components/layout/Header";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 const Index = () => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [createEventModalOpen, setCreateEventModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Set category from URL params
+  useEffect(() => {
+    const categoria = searchParams.get('categoria');
+    if (categoria) {
+      setSelectedCategory(categoria);
+    }
+  }, [searchParams]);
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ['events'],
@@ -58,11 +69,32 @@ const Index = () => {
     },
   });
 
-  const filteredEvents = events.filter(event =>
-    event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (event.category && event.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    event.location.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const categories = [
+    "Conferências e Seminários",
+    "Congressos e Palestras", 
+    "Retiros Espirituais",
+    "Cursos e Workshops",
+    "Reuniões e Encontros",
+    "Festas e Shows",
+    "Espetáculos e Teatros",
+    "Eventos Online",
+    "Eventos Drive-in",
+    "Eventos Gratuitos",
+    "Eventos Solidários",
+    "Eventos Diversos"
+  ];
+
+  const filteredEvents = events.filter(event => {
+    const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (event.category && event.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      event.location.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCategory = !selectedCategory || 
+      event.category === selectedCategory ||
+      (!event.category && selectedCategory === "Eventos Diversos");
+
+    return matchesSearch && matchesCategory;
+  });
 
   const handleEventClick = (eventId: string) => {
     navigate(`/event/${eventId}`);
@@ -123,17 +155,47 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Search Section */}
+      {/* Search and Filter Section */}
       <section className="py-12 px-4">
         <div className="container mx-auto">
-          <div className="relative max-w-2xl mx-auto mb-12">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <Input
-              placeholder="Buscar eventos por nome, categoria ou cidade..."
-              className="pl-12 py-6 text-lg border-2 border-gray-200 focus:border-purple-500 rounded-2xl"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="max-w-4xl mx-auto mb-12 space-y-4">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Input
+                placeholder="Buscar eventos por nome, categoria ou cidade..."
+                className="pl-12 py-6 text-lg border-2 border-gray-200 focus:border-purple-500 rounded-2xl"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger className="w-full">
+                    <Filter className="w-4 h-4 mr-2" />
+                    <SelectValue placeholder="Filtrar por categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todas as categorias</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedCategory && (
+                <Button 
+                  variant="outline"
+                  onClick={() => setSelectedCategory("")}
+                  className="shrink-0"
+                >
+                  Limpar filtros
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </section>
@@ -142,7 +204,7 @@ const Index = () => {
       <section className="py-12 px-4">
         <div className="container mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
-            Eventos em Destaque
+            {selectedCategory ? `Eventos: ${selectedCategory}` : "Eventos em Destaque"}
           </h2>
           
           {filteredEvents.length === 0 ? (

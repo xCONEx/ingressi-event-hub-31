@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,11 +20,13 @@ import Footer from "@/components/layout/Footer";
 import EventCategories from "@/components/categories/EventCategories";
 import StateFilter from "@/components/filters/StateFilter";
 import AuthModal from "@/components/auth/AuthModal";
+import { useNavigate } from "react-router-dom";
 
 const LandingPage = () => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [selectedState, setSelectedState] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
+  const navigate = useNavigate();
 
   const features = [
     {
@@ -132,7 +135,7 @@ const LandingPage = () => {
             <Button 
               size="lg" 
               className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-lg px-8 py-4"
-              onClick={() => setAuthModalOpen(true)}
+              onClick={() => navigate('/auth')}
             >
               Começar Agora Grátis
               <ArrowRight className="w-5 h-5 ml-2" />
@@ -252,7 +255,7 @@ const LandingPage = () => {
                   </ul>
                   <Button 
                     className={`w-full ${plan.popular ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700' : 'bg-gray-800 hover:bg-gray-900'}`}
-                    onClick={() => setAuthModalOpen(true)}
+                    onClick={() => navigate('/auth')}
                   >
                     {plan.buttonText}
                   </Button>
@@ -275,7 +278,7 @@ const LandingPage = () => {
           <Button 
             size="lg"
             className="bg-white text-purple-600 hover:bg-gray-100 text-lg px-8 py-4"
-            onClick={() => setAuthModalOpen(true)}
+            onClick={() => navigate('/auth')}
           >
             Criar Conta Grátis
             <ArrowRight className="w-5 h-5 ml-2" />
