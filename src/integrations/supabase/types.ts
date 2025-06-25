@@ -55,6 +55,33 @@ export type Database = {
           },
         ]
       }
+      content_pages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          slug: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          slug: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          slug?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       event_authorizations: {
         Row: {
           authorized_by: string | null
@@ -100,6 +127,80 @@ export type Database = {
           },
           {
             foreignKeyName: "event_authorizations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_day_registrations: {
+        Row: {
+          created_at: string | null
+          event_day_id: string
+          id: string
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_day_id: string
+          id?: string
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string | null
+          event_day_id?: string
+          id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_day_registrations_event_day_id_fkey"
+            columns: ["event_day_id"]
+            isOneToOne: false
+            referencedRelation: "event_days"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_day_registrations_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_days: {
+        Row: {
+          capacity: number | null
+          created_at: string | null
+          date: string
+          event_id: string
+          id: string
+          price: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string | null
+          date: string
+          event_id: string
+          id?: string
+          price?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string | null
+          date?: string
+          event_id?: string
+          id?: string
+          price?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_days_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
@@ -175,6 +276,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          cpf: string | null
           created_at: string | null
           email: string
           id: string
@@ -187,6 +289,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          cpf?: string | null
           created_at?: string | null
           email: string
           id?: string
@@ -199,6 +302,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          cpf?: string | null
           created_at?: string | null
           email?: string
           id?: string
@@ -293,6 +397,13 @@ export type Database = {
       can_create_paid_events: {
         Args: { user_id: string }
         Returns: boolean
+      }
+      count_events_by_category: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          category: string
+          event_count: number
+        }[]
       }
       generate_qr_code: {
         Args: Record<PropertyKey, never>
