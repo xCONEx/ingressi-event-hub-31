@@ -10,6 +10,8 @@ interface User {
   phone?: string;
   cpf?: string;
   plan_type?: string;
+  person_type?: 'fisica' | 'juridica';
+  complete_profile?: boolean;
 }
 
 interface AuthContextType {
@@ -34,7 +36,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching profile:', error);
@@ -48,11 +50,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const checkCompleteProfile = (profile: any, sessionUser: any) => {
+    const hasName = profile?.name || sessionUser?.user_metadata?.name || sessionUser?.user_metadata?.full_name;
+    const hasCpf = profile?.cpf;
+    const hasPhone = profile?.phone;
+    const hasPersonType = profile?.person_type;
+    
+    return !!(hasName && hasCpf && hasPhone && hasPersonType);
+  };
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
           const profile = await fetchUserProfile(session.user.id);
+          const completeProfile = checkCompleteProfile(profile, session.user);
+          
           setUser({
             id: session.user.id,
             email: session.user.email!,
@@ -60,7 +73,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             avatar_url: profile?.avatar_url || session.user.user_metadata?.avatar_url,
             phone: profile?.phone,
             cpf: profile?.cpf,
-            plan_type: profile?.plan_type
+            plan_type: profile?.plan_type,
+            person_type: profile?.person_type,
+            complete_profile: completeProfile
           });
         } else {
           setUser(null);
@@ -72,6 +87,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         const profile = await fetchUserProfile(session.user.id);
+        const completeProfile = checkCompleteProfile(profile, session.user);
+        
         setUser({
           id: session.user.id,
           email: session.user.email!,
@@ -79,7 +96,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           avatar_url: profile?.avatar_url || session.user.user_metadata?.avatar_url,
           phone: profile?.phone,
           cpf: profile?.cpf,
-          plan_type: profile?.plan_type
+          plan_type: profile?.plan_type,
+          person_type: profile?.person_type,
+          complete_profile: completeProfile
         });
       }
       setLoading(false);
@@ -135,11 +154,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         phone: data.phone || user.phone,
         cpf: data.cpf || user.cpf,
         avatar_url: data.avatar_url || user.avatar_url,
+        person_type: data.person_type || user.person_type,
       });
 
     if (error) throw error;
 
-    setUser({ ...user, ...data });
+    const updatedUser = { ...user, ...data };
+    const completeProfile = checkCompleteProfile(updatedUser, null);
+    
+    setUser({ ...updatedUser, complete_profile: completeProfile });
   };
 
   const logout = async () => {

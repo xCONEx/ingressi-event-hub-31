@@ -69,6 +69,23 @@ const Index = () => {
     },
   });
 
+  const { data: userAuthorizations = [] } = useQuery({
+    queryKey: ['user-authorizations', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      
+      const { data, error } = await supabase
+        .from('event_authorizations')
+        .select('event_id')
+        .eq('authorized_user_id', user.id)
+        .eq('status', 'approved');
+
+      if (error) throw error;
+      return data?.map(auth => auth.event_id) || [];
+    },
+    enabled: !!user?.id,
+  });
+
   const categories = [
     "Conferências e Seminários",
     "Congressos e Palestras", 
@@ -98,6 +115,10 @@ const Index = () => {
 
   const handleEventClick = (eventId: string) => {
     navigate(`/event/${eventId}`);
+  };
+
+  const canShowCheckinButton = (eventId: string) => {
+    return user && (userAuthorizations.includes(eventId) || events.find(e => e.id === eventId && e.organizer_id === user.id));
   };
 
   if (isLoading) {
@@ -143,14 +164,16 @@ const Index = () => {
               <Plus className="w-5 h-5 mr-2" />
               Criar Evento
             </Button>
-            <Button 
-              size="lg" 
-              variant="outline"
-              onClick={() => navigate('/checkin')}
-            >
-              <Ticket className="w-5 h-5 mr-2" />
-              Check-in
-            </Button>
+            {user && (
+              <Button 
+                size="lg" 
+                variant="outline"
+                onClick={() => navigate('/checkin')}
+              >
+                <Ticket className="w-5 h-5 mr-2" />
+                Check-in
+              </Button>
+            )}
           </div>
         </div>
       </section>
@@ -265,9 +288,23 @@ const Index = () => {
                         {ticketCounts[event.id] || 0} participantes
                       </div>
                     </div>
-                    <Button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-                      Ver Detalhes
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                        Ver Detalhes
+                      </Button>
+                      {canShowCheckinButton(event.id) && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate('/checkin');
+                          }}
+                        >
+                          <Ticket className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               ))}
