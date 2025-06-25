@@ -1,8 +1,15 @@
 
 import { Button } from "@/components/ui/button";
 import { Linkedin, Instagram, Facebook, Youtube, Mail, MessageCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Footer = () => {
+  const navigate = useNavigate();
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+  };
+
   return (
     <footer className="bg-gradient-to-r from-purple-600 to-blue-600 text-white py-16 px-4">
       <div className="container mx-auto">
@@ -13,7 +20,7 @@ const Footer = () => {
           </div>
           <Button 
             className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold"
-            onClick={() => window.open('https://wa.me/5527997557004', '_blank')}
+            onClick={() => handleNavigation('/support')}
           >
             🎧 Acessar Central de Ajuda
           </Button>
@@ -36,17 +43,26 @@ const Footer = () => {
             <h3 className="font-bold text-lg mb-4">Institucional</h3>
             <ul className="space-y-2">
               <li>
-                <button className="text-purple-100 hover:text-white transition-colors">
+                <button 
+                  className="text-purple-100 hover:text-white transition-colors"
+                  onClick={() => handleNavigation('/content/quanto-custa')}
+                >
                   Quanto Custa?
                 </button>
               </li>
               <li>
-                <button className="text-purple-100 hover:text-white transition-colors">
+                <button 
+                  className="text-purple-100 hover:text-white transition-colors"
+                  onClick={() => handleNavigation('/content/termos-de-uso')}
+                >
                   Termos de Uso
                 </button>
               </li>
               <li>
-                <button className="text-purple-100 hover:text-white transition-colors">
+                <button 
+                  className="text-purple-100 hover:text-white transition-colors"
+                  onClick={() => handleNavigation('/content/politica-privacidade')}
+                >
                   Política de Privacidade
                 </button>
               </li>
@@ -58,34 +74,49 @@ const Footer = () => {
             <h3 className="font-bold text-lg mb-4">Categorias</h3>
             <ul className="space-y-2">
               <li>
-                <button className="text-purple-100 hover:text-white transition-colors">
+                <button 
+                  className="text-purple-100 hover:text-white transition-colors"
+                  onClick={() => handleNavigation('/events?categoria=conferencias-seminarios')}
+                >
                   Conferências e Seminários
                 </button>
               </li>
               <li>
-                <button className="text-purple-100 hover:text-white transition-colors">
+                <button 
+                  className="text-purple-100 hover:text-white transition-colors"
+                  onClick={() => handleNavigation('/events?categoria=congressos-palestras')}
+                >
                   Congressos e Palestras
                 </button>
               </li>
               <li>
-                <button className="text-purple-100 hover:text-white transition-colors">
+                <button 
+                  className="text-purple-100 hover:text-white transition-colors"
+                  onClick={() => handleNavigation('/events?categoria=retiros-espirituais')}
+                >
                   Retiros Espirituais
                 </button>
               </li>
               <li>
-                <button className="text-purple-100 hover:text-white transition-colors">
+                <button 
+                  className="text-purple-100 hover:text-white transition-colors"
+                  onClick={() => handleNavigation('/events?categoria=cursos-workshops')}
+                >
                   Cursos e Workshops
                 </button>
               </li>
               <li>
-                <button className="text-purple-100 hover:text-white transition-colors">
+                <button 
+                  className="text-purple-100 hover:text-white transition-colors"
+                  onClick={() => handleNavigation('/events?categoria=reunioes-encontros')}
+                >
                   Reuniões e Encontros
                 </button>
               </li>
               <li>
                 <button 
                   className="text-purple-100 hover:text-white transition-colors flex items-center"
-                  onClick={() => window.location.href = '/events'}
+                  onClick={() => handleNavigation('/events')}
                 >
                   Ver todas →
                 </button>

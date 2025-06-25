@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/layout/Header";
-import { Camera, Save, User, Mail, Phone, Calendar, Upload } from "lucide-react";
+import { Camera, Save, User, Mail, Phone, Calendar, Upload, CreditCard } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const MyProfile = () => {
@@ -19,6 +19,7 @@ const MyProfile = () => {
     name: user?.name || "",
     email: user?.email || "",
     phone: user?.phone || "",
+    cpf: user?.cpf || "",
     avatar_url: user?.avatar_url || ""
   });
 
@@ -46,12 +47,24 @@ const MyProfile = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Here you would implement file upload to Supabase Storage
-    // For now, we'll just show a placeholder
     toast({
       title: "Upload de foto",
       description: "Funcionalidade de upload será implementada em breve.",
     });
+  };
+
+  const formatCpf = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .replace(/(-\d{2})\d+?$/, '$1');
+  };
+
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatCpf(e.target.value);
+    setFormData({ ...formData, cpf: formatted });
   };
 
   return (
@@ -160,6 +173,21 @@ const MyProfile = () => {
                   </div>
                   
                   <div className="space-y-2">
+                    <Label htmlFor="cpf">
+                      <CreditCard className="w-4 h-4 inline mr-2" />
+                      CPF
+                    </Label>
+                    <Input
+                      id="cpf"
+                      value={formData.cpf}
+                      onChange={handleCpfChange}
+                      disabled={!isEditing}
+                      placeholder="000.000.000-00"
+                      maxLength={14}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2 md:col-span-2">
                     <Label>
                       <Calendar className="w-4 h-4 inline mr-2" />
                       Membro desde
